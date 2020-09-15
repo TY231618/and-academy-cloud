@@ -107,6 +107,23 @@ resource "aws_iam_policy" "cf-deployer" {
         "ecr:PutImage"
       ],
       "Resource": "*"
+    },
+    {
+      "Sid": "Stmt1479146904000",
+      "Effect": "Allow",
+      "Action": [
+        "ecs:DescribeServices",
+        "ecs:DescribeTaskDefinition",
+        "ecs:DescribeTasks",
+        "ecs:ListClusters",
+        "ecs:ListServices",
+        "ecs:ListTasks",
+        "ecs:RegisterTaskDefinition",
+        "ecs:UpdateService"
+      ],
+      "Resource": [
+        "*"
+      ]
     }
   ]
 }

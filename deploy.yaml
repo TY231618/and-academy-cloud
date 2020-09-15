@@ -1,0 +1,70 @@
+# More examples of Codefresh YAML can be found at
+# https://codefresh.io/docs/docs/yaml-examples/examples/
+
+version: "1.0"
+# Stages can help you organize your steps in stages
+stages:
+  - "clone"
+  - "build"
+  - "test"
+  - "dev"
+  - "staging"
+
+steps:
+  clone:
+    title: "Cloning repository"
+    type: "git-clone"
+    repo: "TY231618/and-devops-101"
+    # CF_BRANCH value is auto set when pipeline is triggered
+    # Learn more at codefresh.io/docs/docs/codefresh-yaml/variables/
+    revision: "${{CF_BRANCH}}"
+    git: "github"
+    stage: "clone"
+
+  build:
+    title: "Building Docker image"
+    type: "build"
+    registry: academy-dev
+    image_name: "academy-dev"
+    working_directory: "${{clone}}"
+    tag: "${{CF_BRANCH_TAG_NORMALIZED}}"
+    dockerfile: "Dockerfile"
+    stage: "build"
+
+  test:
+    title: "Running test"
+    type: "freestyle" # Run any command
+    image: "ubuntu:latest" # The image in which command will be executed
+    working_directory: "${{clone}}" # Running command where code cloned
+    commands:
+      - "ls"
+    stage: "test"
+
+  dev-deploy:
+    title: "Deploying to dev"
+    stage: "dev"
+    image: codefreshplugins/cf-deploy-ecs
+    commands:
+      - cfecs-update ${{REGION}} ${{ECS_CLUSTER_NAME_DEV}} ${{ECS_SERVICE_NAME_DEV}}
+    environment:
+      - AWS_ACCESS_KEY_ID=${{AWS_ACCESS_KEY_ID}}
+      - AWS_SECRET_ACCESS_KEY=${{AWS_SECRET_ACCESS_KEY}}
+
+  staging-push:
+    type: push
+    stage: staging
+    arguments:
+      candidate: '${{build}}'
+      tag: master
+      image_name: academy-staging
+      registry: academy-staging
+
+  staging-deploy:
+    title: "Deploying to staging"
+    stage: "staging"
+    image: codefreshplugins/cf-deploy-ecs
+    commands:
+      - cfecs-update ${{REGION}} ${{ECS_CLUSTER_NAME}} ${{ECS_SERVICE_NAME}} --image-name ${{IMAGE_PREFIX}}/${{IMAGE}} --image-tag '${{CF_BRANCH_TAG_NORMALIZED}}-${{CF_SHORT_REVISION}}'
+    environment:
+      - AWS_ACCESS_KEY_ID=${{AWS_ACCESS_KEY_ID}}
+      - AWS_SECRET_ACCESS_KEY=${{AWS_SECRET_ACCESS_KEY}}
