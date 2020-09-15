@@ -1,25 +1,17 @@
-# More examples of Codefresh YAML can be found at
-# https://codefresh.io/docs/docs/yaml-examples/examples/
-
-version: "1.0"
-# Stages can help you organize your steps in stages
+version: '1.0'
 stages:
   - "clone"
   - "build"
-  - "test"
-  - "dev"
-  - "staging"
-
+  - "deploy-dev"
+  - "deploy-staging"
 steps:
-  clone:
-    title: "Cloning repository"
+  main_clone:
     type: "git-clone"
+    description: "Cloning main repository..."
     repo: "TY231618/and-devops-101"
-    # CF_BRANCH value is auto set when pipeline is triggered
-    # Learn more at codefresh.io/docs/docs/codefresh-yaml/variables/
     revision: "${{CF_BRANCH}}"
-    git: "github"
     stage: "clone"
+    git: github
 
   build:
     title: "Building Docker image"
@@ -31,40 +23,35 @@ steps:
     dockerfile: "Dockerfile"
     stage: "build"
 
-  test:
-    title: "Running test"
-    type: "freestyle" # Run any command
-    image: "ubuntu:latest" # The image in which command will be executed
-    working_directory: "${{clone}}" # Running command where code cloned
-    commands:
-      - "ls"
-    stage: "test"
+  Push-dev:
+    title: "Pushing image to ECR"
+    stage: "deploy-dev"
+    type: "push"
+    tag: '${{CF_BRANCH_TAG_NORMALIZED}}-${{CF_SHORT_REVISION}}'
+    registry: "academy-dev"
+    candidate: "${{build}}"
 
-  dev-deploy:
-    title: "Deploying to dev"
-    stage: "dev"
+  DeployDevToFargate:
+    stage: "deploy-dev"
     image: codefreshplugins/cf-deploy-ecs
     commands:
-      - cfecs-update ${{REGION}} ${{ECS_CLUSTER_NAME_DEV}} ${{ECS_SERVICE_NAME_DEV}}
+      - cfecs-update ${{REGION}} ${{ECS_CLUSTER_NAME}} ${{ECS_SERVICE_NAME}} --image-name ${{IMAGE_PREFIX_DEV}}/${{IMAGE}} --image-tag '${{CF_BRANCH_TAG_NORMALIZED}}-${{CF_SHORT_REVISION}}'
     environment:
-      - AWS_ACCESS_KEY_ID=${{AWS_ACCESS_KEY_ID}}
-      - AWS_SECRET_ACCESS_KEY=${{AWS_SECRET_ACCESS_KEY}}
+      - AWS_ACCESS_KEY_ID=${{AWS_ACCESS_KEY_ID_DEV}}
+      - AWS_SECRET_ACCESS_KEY=${{AWS_SECRET_ACCESS_KEY_DEV}}
 
-  staging-push:
-    type: push
-    stage: staging
-    arguments:
-      candidate: '${{build}}'
-      tag: master
-      image_name: academy-staging
-      registry: academy-staging
-
-  staging-deploy:
-    title: "Deploying to staging"
-    stage: "staging"
+  Push-staging:
+    title: "Pushing image to ECR"
+    stage: "deploy-staging"
+    type: "push"
+    tag: '${{CF_BRANCH_TAG_NORMALIZED}}-${{CF_SHORT_REVISION}}'
+    registry: "academy-staging"
+    candidate: "${{build}}"
+    
+  DeployStagingToFargate:
+    stage: "deploy-staging"
     image: codefreshplugins/cf-deploy-ecs
     commands:
-      - cfecs-update ${{REGION}} ${{ECS_CLUSTER_NAME}} ${{ECS_SERVICE_NAME}} --image-name ${{IMAGE_PREFIX}}/${{IMAGE}} --image-tag '${{CF_BRANCH_TAG_NORMALIZED}}-${{CF_SHORT_REVISION}}'
+      - cfecs-update ${{REGION}} ${{ECS_CLUSTER_NAME_STAGING}} ${{ECS_SERVICE_NAME_STAGING}} --image-name ${{IMAGE_PREFIX_DEV_STAGING}}/${{IMAGE}} --image-tag '${{CF_BRANCH_TAG_NORMALIZED}}-${{CF_SHORT_REVISION}}'
     environment:
-      - AWS_ACCESS_KEY_ID=${{AWS_ACCESS_KEY_ID}}
-      - AWS_SECRET_ACCESS_KEY=${{AWS_SECRET_ACCESS_KEY}}
+      - AWS_ACCESS_KEY_ID=${{AWS_ACCESS_KEY_ID_STAGING_STAGING}}

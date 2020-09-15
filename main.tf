@@ -124,7 +124,12 @@ resource "aws_iam_policy" "cf-deployer" {
       "Resource": [
         "*"
       ]
-    }
+    },
+    {
+        "Effect": "Allow",
+        "Action": "iam:PassRole",
+        "Resource": "*"
+    } 
   ]
 }
 EOF
