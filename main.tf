@@ -114,7 +114,7 @@ EOF
 }
 
 resource "aws_iam_user_policy_attachment" "main" {
-  policy_arn = aws_iam_policy.main.arn
+  policy_arn = aws_iam_policy.cf-deployer.arn
   user = aws_iam_user.cf-deployer.name
 }
 
